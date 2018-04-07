@@ -1,12 +1,14 @@
 #include <ESP8266WiFi.h>                // WiFi Library
 #include <SimpleDHT.h>                  // Digital Temp Library
 
-const char* ssid = "";       // This is the SSID of the network; "BTHub4-NKRC";
-const char* password = "";    // This is the password for the network; "c272e73d5b";
+const char* ssid = "BTHub4-NKRC";       // This is the SSID of the network; "BTHub4-NKRC";
+const char* password = "c272e73d5b";    // This is the password for the network; "c272e73d5b";
 WiFiServer server(80);                  // This is the service port being used
 
 int pinTemp1 = 16;
+int pinTemp2 = 5;
 SimpleDHT11 dht11;
+SimpleDHT11 dht112;
 
 void setup() {
   Serial.begin(115200);                 
@@ -52,20 +54,26 @@ void loop() {
   byte data[40] = {0};
   
   if (dht11.read(pinTemp1, &temp1, &humidity, data)) {
-    Serial.print("Read DHTll failed");
+    Serial.println("Read DHTll failed");
     return;
   }
 
- /* Serial.print("Temp 1: ");
-  for (int i=0; i<40; i++){
-    Serial.print((int)data[i]);
-    if (i>0 && ((i+1) % 4) ==0) {
-      Serial.print(' ');
-    }
-  }*/
+
   Serial.println("");
-  Serial.print("Temparature 1: ");
+  Serial.print("Equipment Room: ");
   Serial.print((int)temp1); Serial.print(" *C, ");
+
+  byte temp2 = 0;
+  byte humidity2 = 0;
+  byte data2[40] = {0};
+
+    if (dht112.read(pinTemp2, &temp2, &humidity2, data2)) {
+    Serial.println("Read DHTll2 failed");
+    return;
+  }
+  
+  Serial.print("Growing Area: ");
+  Serial.print((int)temp2); Serial.print(" *C, ");
   delay(3000);
 
   

@@ -2,10 +2,19 @@
 #include <SimpleDHT.h>                  // Digital Temp Library
 #include <SPI.h>                        // SPI Bus Library
 #include <MFRC522.h>                    // Library
+#include <PubSubClient.h>               // MQTT Library
 
 const char* ssid = "BTHub4-NKRC";       // This is the SSID of the network; "BTHub4-NKRC";
 const char* password = "c272e73d5b";    // This is the password for the network; "c272e73d5b";
 WiFiServer server(80);                  // This is the service port being used
+const char* mqtt_server = "192.168.1.95";
+WiFiClient espClient;
+PubSubClient client(espClient);
+long lastMsg = 0;
+char msg[50];
+int value = 0;
+
+
 
 int ledPin = 14;    // LED Pin - (5 Uno)
 int buttonApin = 0;   // LED Pin - (9 Uno)
@@ -66,7 +75,47 @@ void setup() {
     Serial.println("");
 
 
-    
+
+    /************************************************************************************************
+     ******************************************** MQTT***********************************************
+     ************************************************************************************************/
+
+void callback(char* topic, byte* payload, unsigned int length) {
+    Serial.print("Message arrived [");
+    Serial.print(topic);
+    Serial.print("] ");
+    for (int i = 0; i < length; i++) {
+        Serial.print((char)payload[i]);
+    }
+    Serial.println();
+}
+
+void reconnect() {
+    // Loop until we're reconnected
+    while (!client.connected()) {
+        Serial.print("Attempting MQTT connection...");
+        // Attempt to connect
+        if (client.connect("ESP8266Client")) {
+            Serial.println("connected");
+            // Once connected, publish an announcement...
+            client.publish("outTopic", "hello world");
+            // ... and resubscribe
+            client.subscribe("inTopic");
+        } else {
+            Serial.print("failed, rc=");
+            Serial.print(client.state());
+            Serial.println(" try again in 5 seconds");
+            // Wait 5 seconds before retrying
+            delay(5000);
+        }
+    }
+}
+
+
+
+      /************************************************************************************************
+     ******************************************** MQTT***********************************************
+     ************************************************************************************************/
 
 }
 
@@ -129,6 +178,22 @@ void loop() {
   } 
 
   delay(2000);
+
+
+      if (!client.connected()) {
+        reconnect();
+    }
+    client.loop();
+
+    long now = millis();
+    if (now - lastMsg > 2000) {
+        lastMsg = now;
+        ++value;
+        snprintf (msg, 75, "hello world #%ld", value);
+        Serial.print("Publish message: ");
+        Serial.println(msg);
+        client.publish("outTopic", msg);
+    }
 
 
 

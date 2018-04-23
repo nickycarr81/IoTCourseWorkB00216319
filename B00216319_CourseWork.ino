@@ -77,11 +77,14 @@ void read_temps(){
 
   Serial.println("");
   Serial.print("Equipment Room: ");
-  Serial.print((int)temp1); 
-  Serial.print(" *C, ");
+  Serial.print((int)temp1); Serial.print(" *C, ");              // Print out temp to serial monitor
   Serial.println("");
+  char buffer1[10];
+  const char* mqttTemp1;
+  double equipRoom = temp1;
+  mqttTemp1 = dtostrf(equipRoom,4,2,buffer1);                  // Convert temp to const char for MQTT message
   delay(3000);
-  client.publish("T1", "Hello World" );
+  client.publish("T1", mqttTemp1);                            // Publish message using MQTT to broker queue
 
 
   byte temp2 = 0;
@@ -94,9 +97,28 @@ void read_temps(){
   }
 
   Serial.print("Growing Area: ");
-  Serial.print((int)temp2); Serial.print(" *C, ");
+  Serial.print((int)temp2); Serial.print(" *C, ");            // Print out temp to serial monitor
+  char buffer2[10];
+  const char* mqttTemp2;
+  double growingArea = temp2;
+  mqttTemp2 = dtostrf(growingArea,4,2,buffer2);              // Convert temp to const char for MQTT message
   delay(3000);
-  client.publish("T1", "Temp 2");
+  client.publish("T1", mqttTemp2);                          // Publish message using MQTT to broker queue
+
+//delay(3000);
+   if ( ! mfrc522.PICC_IsNewCardPresent() || ! mfrc522.PICC_ReadCardSerial() ) {
+    delay(50);
+    return;
+  }
+
+      Serial.println("");
+    Serial.print(F("Card UID:"));
+  for (byte i = 0; i < mfrc522.uid.size; i++) {
+    Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+    Serial.print(mfrc522.uid.uidByte[i], HEX);
+  } 
+
+  delay(2000);
     
   }
 
@@ -140,8 +162,16 @@ void loop() {
   if (!client.connected()) {
   reconnect();
  }
- read_temps();
+ 
+  read_temps();
+
+ 
  client.loop();
+
+
+
+
+ 
  
 
 }

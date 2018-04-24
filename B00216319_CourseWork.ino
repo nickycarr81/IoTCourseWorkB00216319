@@ -14,9 +14,11 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 // LED Pin Details
-int ledPin = 14;                          // LED Pin - (5 Uno)
-int buttonApin = 0;                       // LED Pin - (9 Uno)
-int buttonBpin = 13;                      // LED Pin - (8 Uno)
+int ledPinCooler = 14;                      // LED Pin - (5 Uno)
+int ledPinHeater = 12;                      // LED Pin - (6 Uno)
+int ledPinNormal = 13;                      // LED Pin - (7 Uno)
+//int buttonApin = 0;                       // LED Pin - (9 Uno)
+//int buttonBpin = 13;                      // LED Pin - (8 Uno)
 byte leds = 0;
 
 // Temp Pin Details
@@ -105,7 +107,7 @@ void read_temps(){
   delay(3000);
   client.publish("T1", mqttTemp2);                          // Publish message using MQTT to broker queue
 
-//delay(3000);
+/*delay(3000);
    if ( ! mfrc522.PICC_IsNewCardPresent() || ! mfrc522.PICC_ReadCardSerial() ) {
     delay(50);
     return;
@@ -118,6 +120,28 @@ void read_temps(){
     Serial.print(mfrc522.uid.uidByte[i], HEX);
   } 
 
+  delay(2000);*/
+
+    if ((int)temp1+2 <= (int)temp2)
+  {
+    digitalWrite(ledPinCooler, LOW);
+    digitalWrite(ledPinHeater, HIGH);
+    digitalWrite(ledPinNormal, LOW);
+    client.publish("T1", "Heater On");
+  }
+  else if ((int)temp1 >= (int)temp2+2)
+  {
+    digitalWrite(ledPinCooler, HIGH);
+    digitalWrite(ledPinHeater, LOW);
+    digitalWrite(ledPinNormal, LOW);
+    client.publish("T1", "Cooler On");
+  }
+  else{
+    digitalWrite(ledPinCooler, LOW);
+    digitalWrite(ledPinHeater, LOW);
+    digitalWrite(ledPinNormal, HIGH);
+    client.publish("T1", "Temp Stable");    
+  }
   delay(2000);
     
   }
@@ -150,9 +174,11 @@ void setup() {
   client.setServer(mqtt_server, 1883);
   SPI.begin();                                    // Start Init SPI bus
   mfrc522.PCD_Init();                             // Init MFRC522 card
-  pinMode(ledPin, OUTPUT);
-  pinMode(buttonApin, INPUT_PULLUP);  
-  pinMode(buttonBpin, INPUT_PULLUP);
+  pinMode(ledPinCooler, OUTPUT);
+  pinMode(ledPinHeater, OUTPUT);
+  pinMode(ledPinNormal, OUTPUT);
+  //pinMode(buttonApin, INPUT_PULLUP);  
+  //pinMode(buttonBpin, INPUT_PULLUP);
 
 
 }

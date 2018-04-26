@@ -6,9 +6,9 @@
 #include <Wire.h>
 
 // WiFi Network and Server Details
-const char* ssid = "Nicky";         // This is the SSID of the network; "BTHub4-NKRC";
-const char* password = "youknowit";      // This is the password for the network; "c272e73d5b";
-const char* mqtt_server = "192.168.43.118"; // IP address for the node-red broker
+const char* ssid = "";         // This is the SSID of the network; "BTHub4-NKRC";
+const char* password = "";      // This is the password for the network; "c272e73d5b";
+const char* mqtt_server = ""; // IP address for the node-red broker
 WiFiServer server(80);                    // This is the service port being used
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -152,11 +152,27 @@ void read_temps(){
     digitalWrite(ledPinCooler, LOW);
     digitalWrite(ledPinHeater, LOW);
     digitalWrite(ledPinNormal, HIGH);
-    client.publish("HeatCoolStatus", "Temp Stable");    
+    client.publish("HeatCoolStatus", "Stable");    
   }
   delay(2000);
     
   }
+
+
+ void callback(char* topic, byte* payload, unsigned int length) {
+ Serial.print("Message arrived [");
+ Serial.print(topic);
+ Serial.print("] ");
+ for (int i=0;i<length;i++) {
+  char receivedChar = (char)payload[i];
+  Serial.print(receivedChar);
+  if (receivedChar == '1')
+  digitalWrite(ledPinCooler, HIGH);
+  if (receivedChar == '0')
+   digitalWrite(ledPinCooler, LOW);
+  }
+  Serial.println();
+}
 
   void reconnect() {
  // Loop until we're reconnected
@@ -166,7 +182,8 @@ void read_temps(){
  if (client.connect("ESP8266 Client")) {
   Serial.println("connected");
   // ... and subscribe to topic
-  client.subscribe("T1");
+  client.subscribe("CoolerOnOff");
+  client.subscribe("HeaterOnOff");
  } else {
   Serial.print("failed, rc=");
   Serial.print(client.state());
@@ -184,6 +201,7 @@ void setup() {
   setup_wifi();
   //setup_mqtt();
   client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
   SPI.begin();                                    // Start Init SPI bus
   mfrc522.PCD_Init();                             // Init MFRC522 card
   pinMode(ledPinCooler, OUTPUT);

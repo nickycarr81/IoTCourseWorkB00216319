@@ -6,9 +6,9 @@
 #include <Wire.h>
 
 // WiFi Network and Server Details
-const char* ssid = "BTHub4-NKRC";         // This is the SSID of the network; "BTHub4-NKRC";
-const char* password = "c272e73d5b";      // This is the password for the network; "c272e73d5b";
-const char* mqtt_server = "192.168.1.95"; // IP address for the node-red broker
+const char* ssid = "Nicky";         // This is the SSID of the network; "BTHub4-NKRC";
+const char* password = "youknowit";      // This is the password for the network; "c272e73d5b";
+const char* mqtt_server = "192.168.43.118"; // IP address for the node-red broker
 WiFiServer server(80);                    // This is the service port being used
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -78,7 +78,7 @@ void read_temps(){
   }
 
   Serial.println("");
-  Serial.print("Equipment Room: ");
+  Serial.print("Equipment Room Temp: ");
   Serial.print((int)temp1); Serial.print(" *C, ");              // Print out temp to serial monitor
   Serial.println("");
   char buffer1[10];
@@ -86,7 +86,7 @@ void read_temps(){
   double equipRoom = temp1;
   mqttTemp1 = dtostrf(equipRoom,4,2,buffer1);                  // Convert temp to const char for MQTT message
   delay(3000);
-  client.publish("T1", mqttTemp1);                            // Publish message using MQTT to broker queue
+  client.publish("TempEquipRoom", mqttTemp1);                            // Publish message using MQTT to broker queue
 
 
   byte temp2 = 0;
@@ -98,14 +98,26 @@ void read_temps(){
     return;
   }
 
-  Serial.print("Growing Area: ");
-  Serial.print((int)temp2); Serial.print(" *C, ");            // Print out temp to serial monitor
+  Serial.print("Growing Area Temp: ");
+  Serial.print((int)temp2); Serial.println(" *C, ");            // Print out temp to serial monitor
+  Serial.print("Growing Area Humidity: ");
+  Serial.print((int)humidity); Serial.println(" %");            // Print out humidity to serial monitor
+  
   char buffer2[10];
   const char* mqttTemp2;
   double growingArea = temp2;
   mqttTemp2 = dtostrf(growingArea,4,2,buffer2);              // Convert temp to const char for MQTT message
   delay(3000);
-  client.publish("T1", mqttTemp2);                          // Publish message using MQTT to broker queue
+  client.publish("TempGrowArea", mqttTemp2);                 // Publish message using MQTT to broker queue
+
+  char buffer3[10];
+  const char* mqttHumid;
+  double growingAreaHumid = humidity;
+  mqttHumid = dtostrf(growingAreaHumid,2,0,buffer3);              // Convert humidity to const char for MQTT message
+  delay(3000);
+  client.publish("HumGrowArea", mqttHumid);                 // Publish message using MQTT to broker queue
+
+  
 
 /*delay(3000);
    if ( ! mfrc522.PICC_IsNewCardPresent() || ! mfrc522.PICC_ReadCardSerial() ) {
@@ -122,25 +134,25 @@ void read_temps(){
 
   delay(2000);*/
 
-    if ((int)temp1+2 <= (int)temp2)
+    if ((int)temp1+2 < (int)temp2)
   {
     digitalWrite(ledPinCooler, LOW);
     digitalWrite(ledPinHeater, HIGH);
     digitalWrite(ledPinNormal, LOW);
-    client.publish("T1", "Heater On");
+    client.publish("HeatCoolStatus", "Heater On");
   }
-  else if ((int)temp1 >= (int)temp2+2)
+  else if ((int)temp1 > (int)temp2+2)
   {
     digitalWrite(ledPinCooler, HIGH);
     digitalWrite(ledPinHeater, LOW);
     digitalWrite(ledPinNormal, LOW);
-    client.publish("T1", "Cooler On");
+    client.publish("HeatCoolStatus", "Cooler On");
   }
   else{
     digitalWrite(ledPinCooler, LOW);
     digitalWrite(ledPinHeater, LOW);
     digitalWrite(ledPinNormal, HIGH);
-    client.publish("T1", "Temp Stable");    
+    client.publish("HeatCoolStatus", "Temp Stable");    
   }
   delay(2000);
     

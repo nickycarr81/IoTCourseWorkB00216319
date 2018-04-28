@@ -1,29 +1,30 @@
 #include <ESP8266WiFi.h>                // WiFi Library
 #include <SimpleDHT.h>                  // Digital Temp Library
 #include <SPI.h>                        // SPI Bus Library
-#include <MFRC522.h>                    // Library
+#include <MFRC522.h>                    // RFID Library
 #include <PubSubClient.h>               // MQTT Library
-#include <Wire.h>
+//#include <Wire.h>
 
 // WiFi Network and Server Details
-const char* ssid = "";         // This is the SSID of the network; "BTHub4-NKRC";
-const char* password = "";      // This is the password for the network; "c272e73d5b";
-const char* mqtt_server = ""; // IP address for the node-red broker
+const char* ssid = "Nicky";         // This is the SSID of the network; "BTHub4-NKRC";
+const char* password = "youknowit";      // This is the password for the network; "c272e73d5b";
+const char* mqtt_server = "192.168.43.118"; // IP address for the node-red broker
 WiFiServer server(80);                    // This is the service port being used
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // LED Pin Details
-int ledPinCooler = 14;                      // LED Pin - (5 Uno)
-int ledPinHeater = 12;                      // LED Pin - (6 Uno)
-int ledPinNormal = 13;                      // LED Pin - (7 Uno)
-//int buttonApin = 0;                       // LED Pin - (9 Uno)
-//int buttonBpin = 13;                      // LED Pin - (8 Uno)
+//int ledPinCooler = 3;                      // LED Pin - (5 Uno)14
+//int ledPinHeater = 1;                      // LED Pin - (6 Uno)12
+//int ledPinNormal = 16;                      // LED Pin - (7 Uno)13
+#define ledPinCooler 3                      // LED Pin - (5 Uno)
+#define ledPinHeater 1                      // LED Pin - (6 Uno)
+#define ledPinNormal 16                      // LED Pin - (7 Uno)
 byte leds = 0;
 
 // Temp Pin Details
-int pinTemp1 = 16;
-int pinTemp2 = 5;
+int pinTemp1 = 5;  //3
+int pinTemp2 = 4;  //1
 SimpleDHT11 dht11;
 SimpleDHT11 dht112;
 
@@ -85,8 +86,8 @@ void read_temps(){
   const char* mqttTemp1;
   double equipRoom = temp1;
   mqttTemp1 = dtostrf(equipRoom,4,2,buffer1);                  // Convert temp to const char for MQTT message
-  delay(3000);
-  client.publish("TempEquipRoom", mqttTemp1);                            // Publish message using MQTT to broker queue
+  client.publish("TempEquipRoom", mqttTemp1);                  // Publish message using MQTT to broker queue
+  delay(1000);
 
 
   byte temp2 = 0;
@@ -107,32 +108,16 @@ void read_temps(){
   const char* mqttTemp2;
   double growingArea = temp2;
   mqttTemp2 = dtostrf(growingArea,4,2,buffer2);              // Convert temp to const char for MQTT message
-  delay(3000);
   client.publish("TempGrowArea", mqttTemp2);                 // Publish message using MQTT to broker queue
+  delay(1000);
 
   char buffer3[10];
   const char* mqttHumid;
   double growingAreaHumid = humidity;
   mqttHumid = dtostrf(growingAreaHumid,2,0,buffer3);              // Convert humidity to const char for MQTT message
-  delay(3000);
   client.publish("HumGrowArea", mqttHumid);                 // Publish message using MQTT to broker queue
+  delay(1000);
 
-  
-
-/*delay(3000);
-   if ( ! mfrc522.PICC_IsNewCardPresent() || ! mfrc522.PICC_ReadCardSerial() ) {
-    delay(50);
-    return;
-  }
-
-      Serial.println("");
-    Serial.print(F("Card UID:"));
-  for (byte i = 0; i < mfrc522.uid.size; i++) {
-    Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
-    Serial.print(mfrc522.uid.uidByte[i], HEX);
-  } 
-
-  delay(2000);*/
 
     if ((int)temp1+2 < (int)temp2)
   {
@@ -154,8 +139,52 @@ void read_temps(){
     digitalWrite(ledPinNormal, HIGH);
     client.publish("HeatCoolStatus", "Stable");    
   }
-  delay(2000);
+  //delay(2000);
+   
+  }
+
+  void read_door(){
+    if ( ! mfrc522.PICC_IsNewCardPresent()){
+    return;
+   }
+   if ( ! mfrc522.PICC_ReadCardSerial()) {
+    return;
+   }
+  Serial.print("UID tag :");
+  String content= "";
+  byte letter;
+  for (byte i = 0; i < mfrc522.uid.size; i++) 
+  {
+     Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+     Serial.print(mfrc522.uid.uidByte[i], HEX);
+     content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
+     content.concat(String(mfrc522.uid.uidByte[i], HEX));
+  }
+Serial.println();
+  Serial.print("Message : ");
+  content.toUpperCase();
+if (content.substring(1) == "8B 88 DB D9")
+  {
+    Serial.println("Authorized access");
+    Serial.println();
+    client.publish("DoorSecurity", "Technician");
+    delay(1000);
     
+  }
+  
+  else if (content.substring(1) == "F7 A3 0A 0C")
+  {
+    Serial.println("Authorized access");
+    Serial.println();
+    client.publish("DoorSecurity", "Engineer");
+    delay(1000);
+    
+  }
+ 
+ else   {
+    Serial.println(" Access denied");
+    delay(1000);
+  }
   }
 
 
@@ -198,36 +227,26 @@ void read_temps(){
 void setup() {
   Serial.begin(115200);
   delay(20);                                      // Delay in miliseconds between reads
-  setup_wifi();
-  //setup_mqtt();
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
   SPI.begin();                                    // Start Init SPI bus
   mfrc522.PCD_Init();                             // Init MFRC522 card
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+
   pinMode(ledPinCooler, OUTPUT);
   pinMode(ledPinHeater, OUTPUT);
   pinMode(ledPinNormal, OUTPUT);
-  //pinMode(buttonApin, INPUT_PULLUP);  
-  //pinMode(buttonBpin, INPUT_PULLUP);
+
+
 
 
 }
 
-void loop() {
-  
-  if (!client.connected()) {
-  reconnect();
- }
- 
-  read_temps();
-
- 
+void loop() {  
+ if (!client.connected()) {
+  reconnect();}
+ read_door();
+ read_temps();
  client.loop();
-
-
-
-
- 
- 
-
 }
+

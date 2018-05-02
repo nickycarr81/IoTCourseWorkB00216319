@@ -3,28 +3,25 @@
 #include <SPI.h>                        // SPI Bus Library
 #include <MFRC522.h>                    // RFID Library
 #include <PubSubClient.h>               // MQTT Library
-//#include <Wire.h>
+
 
 // WiFi Network and Server Details
-const char* ssid = "Nicky";         // This is the SSID of the network; "BTHub4-NKRC";
-const char* password = "youknowit";      // This is the password for the network; "c272e73d5b";
+const char* ssid = "Nicky";         // This is the SSID of the network;
+const char* password = "youknowit";      // This is the password for the network;
 const char* mqtt_server = "192.168.43.118"; // IP address for the node-red broker
 WiFiServer server(80);                    // This is the service port being used
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // LED Pin Details
-//int ledPinCooler = 3;                      // LED Pin - (5 Uno)14
-//int ledPinHeater = 1;                      // LED Pin - (6 Uno)12
-//int ledPinNormal = 16;                      // LED Pin - (7 Uno)13
 #define ledPinCooler 3                      // LED Pin - (5 Uno)
 #define ledPinHeater 1                      // LED Pin - (6 Uno)
 #define ledPinNormal 16                      // LED Pin - (7 Uno)
 byte leds = 0;
 
 // Temp Pin Details
-int pinTemp1 = 5;  //3
-int pinTemp2 = 4;  //1
+int pinTemp1 = 5;                         // Temp 1 Pin
+int pinTemp2 = 4;                         // Temp 2 Pin
 SimpleDHT11 dht11;
 SimpleDHT11 dht112;
 
@@ -36,7 +33,12 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);         // Create MFRC522 instance
 MFRC522::MIFARE_Key key;
 
 
-
+/**
+ * WiFi Function
+ * Connects to a WiFi Network
+ * using the SSID and Password
+ * as parameters
+ */
 
 void setup_wifi() {
    Serial.println();
@@ -61,12 +63,14 @@ void setup_wifi() {
   
 }
 
-/*void setup_mqtt() {
-  client.setServer(mqtt_server, 1883);
-  //client.setCallback(callback);
-  
-}*/
 
+/**
+ * This function reads the 2 temps
+ * converts to chars and passes the messages
+ * by MQTT. This function also determines
+ * if there has been a change in Temp and lights
+ * The appropriate LED
+ */
 void read_temps(){
 
   byte temp1 = 0;
@@ -139,9 +143,16 @@ void read_temps(){
     digitalWrite(ledPinNormal, HIGH);
     client.publish("HeatCoolStatus", "Stable");    
   }
-  //delay(2000);
-   
+  
   }
+
+  /**
+   * This function checks if a card or fob
+   * is presented. The unique code generates
+   * a String which is then checked to see if valid
+   * for entry. The name is then passed to the broker
+   * by MQTT message.
+   */
 
   void read_door(){
     if ( ! mfrc522.PICC_IsNewCardPresent()){
@@ -188,6 +199,11 @@ if (content.substring(1) == "8B 88 DB D9")
   }
 
 
+/**
+ * This function is called when a message is received
+ * by the IoT Broker. It then checks what the message is
+ * and controls the on/off of the appropriate LED.
+ */
  void callback(char* topic, byte* payload, unsigned int length) {
  Serial.print("Message arrived [");
  Serial.print(topic);
@@ -195,34 +211,47 @@ if (content.substring(1) == "8B 88 DB D9")
  for (int i=0;i<length;i++) {
   char receivedChar = (char)payload[i];
   Serial.print(receivedChar);
+  
   if (receivedChar == '1')
   digitalWrite(ledPinCooler, HIGH);
-  if (receivedChar == '0')
+  else if (receivedChar == '0')
    digitalWrite(ledPinCooler, LOW);
+   else if (receivedChar == '2')
+   digitalWrite(ledPinHeater, HIGH);
+   else if (receivedChar == '3')
+   digitalWrite(ledPinHeater, LOW); 
+
   }
-  Serial.println();
+
 }
 
+/**
+ * This function loops until a connection
+ * is made with the IoT broker. Once connected
+ * it subscribes to topics
+ */
+
   void reconnect() {
- // Loop until we're reconnected
  while (!client.connected()) {
  Serial.print("establishing IoT Broker connection over MQTT...");
- // Attempt to connect
  if (client.connect("ESP8266 Client")) {
   Serial.println("connected");
-  // ... and subscribe to topic
   client.subscribe("CoolerOnOff");
   client.subscribe("HeaterOnOff");
  } else {
   Serial.print("failed, rc=");
   Serial.print(client.state());
   Serial.println(" try again in 5 seconds");
-  // Wait 5 seconds before retrying
   delay(5000);
   }
  }
 }
 
+/**
+ * Core function at set up which
+ * starts functions and calls created functions such
+ * as setup_wifi().
+ */
 
 void setup() {
   Serial.begin(115200);
@@ -232,15 +261,17 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
-
-  pinMode(ledPinCooler, OUTPUT);
-  pinMode(ledPinHeater, OUTPUT);
-  pinMode(ledPinNormal, OUTPUT);
-
-
-
+  pinMode(ledPinCooler, OUTPUT);                // Sets the outout of the pin
+  pinMode(ledPinHeater, OUTPUT);                // Sets the outout of the pin
+  pinMode(ledPinNormal, OUTPUT);                // Sets the outout of the pin
 
 }
+
+/**
+ * Core loop function which continually loops
+ * and calls the temp and RFID functions. It also
+ * ensure the connection to the broker is set up.
+ */
 
 void loop() {  
  if (!client.connected()) {
@@ -249,4 +280,3 @@ void loop() {
  read_temps();
  client.loop();
 }
-
